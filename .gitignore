@@ -55,3 +55,4 @@ student_profile.json
 __pycache__/
 .pytest_cache/
 ai-recommendation/data/cache/
+ai-recommendation/eval/resultats/

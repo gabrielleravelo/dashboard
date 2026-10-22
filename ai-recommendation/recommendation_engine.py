@@ -39,6 +39,8 @@ class RecommendationEngine:
         use_cache: bool = True,
         verbose: bool = False,
         model=None,
+        model_name: str = MODEL_NAME,
+        jobs: list[dict] | None = None,
     ):
         """
         source      : "sample" (défaut), "live" ou chemin d'un fichier JSON
@@ -46,20 +48,36 @@ class RecommendationEngine:
         canada_only : ne garder que les offres au Canada
         use_cache   : réutiliser les vecteurs déjà calculés
         model       : modèle déjà chargé (sert surtout aux tests)
+        model_name  : modèle SentenceTransformer à utiliser
+        jobs        : liste d'offres déjà chargée (remplace source)
         """
         if data_path is not None:
             source = str(data_path)
         source = source or os.environ.get("JOBS_SOURCE", "sample")
         self.verbose = verbose
 
+        self.model_name = model_name
+        # Les modèles E5 attendent un préfixe « query: » / « passage: »
+        is_e5 = "e5" in model_name.lower()
+        self.query_prefix = "query: " if is_e5 else ""
+        self.doc_prefix = "passage: " if is_e5 else ""
+
         # Charger les offres
-        self.jobs = load_jobs(source, canada_only=canada_only)
-        print(f"Offres chargées : {len(self.jobs)} (source : {source})")
+        if jobs is not None:
+            self.jobs = jobs
+            # Liste fournie de l'extérieur : on ne sait pas si elle est complète
+            self._prune_cache = False
+        else:
+            self.jobs = load_jobs(source, canada_only=canada_only)
+            # On ne nettoie le cache que si on a TOUTES les offres réelles,
+            # sinon un essai filtré (ex. Canada) effacerait les autres vecteurs.
+            self._prune_cache = source == "live" and not canada_only
+            print(f"Offres chargées : {len(self.jobs)} (source : {source})")
 
         # Charger le modèle une seule fois
         if model is None:
             from sentence_transformers import SentenceTransformer
-            model = SentenceTransformer(MODEL_NAME)
+            model = SentenceTransformer(model_name)
         self.model = model
 
         # Vecteurs des offres (avec cache)
@@ -75,7 +93,7 @@ class RecommendationEngine:
         return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
     def _cache_path(self) -> Path:
-        slug = hashlib.md5(MODEL_NAME.encode()).hexdigest()[:8]
+        slug = hashlib.md5(self.model_name.encode()).hexdigest()[:8]
         return CACHE_DIR / f"job_embeddings_{slug}.npz"
 
     def _encode_jobs(self, use_cache: bool) -> np.ndarray:
@@ -91,7 +109,7 @@ class RecommendationEngine:
         missing = [k for k in dict.fromkeys(keys) if k not in cached]
         if missing:
             print(f"Calcul des vecteurs pour {len(missing)} offre(s)...")
-            titles = [title_of[k] for k in missing]
+            titles = [self.doc_prefix + title_of[k] for k in missing]
             vectors = self.model.encode(
                 titles,
                 batch_size=128,
@@ -101,9 +119,12 @@ class RecommendationEngine:
             cached.update(zip(missing, np.asarray(vectors, dtype=np.float32)))
 
             if use_cache:
-                # On ne garde que les offres actuelles (les anciennes sont retirées).
                 path.parent.mkdir(parents=True, exist_ok=True)
-                current = list(dict.fromkeys(keys))
+                if self._prune_cache:
+                    # Toutes les offres réelles : on retire les offres disparues.
+                    current = list(dict.fromkeys(keys))
+                else:
+                    current = list(cached)
                 # float16 : fichier deux fois plus léger, précision suffisante
                 np.savez(path, keys=np.array(current),
                          vectors=np.stack([cached[k] for k in current]).astype(np.float16))
@@ -117,7 +138,9 @@ class RecommendationEngine:
     # ------------------------------------------------------------------
     # Recommandation
     # ------------------------------------------------------------------
-    def recommend(self, student_profile: dict, job_type: str | None = None, top_k: int = 10):
+    def profile_scores(self, student_profile: dict) -> np.ndarray | None:
+        """Similarité du profil avec CHAQUE offre (même ordre que self.jobs).
+        Retourne None si le profil est vide."""
         profile_parts = [
             student_profile.get("formation", ""),
             ", ".join(student_profile.get("competences", [])),
@@ -125,7 +148,7 @@ class RecommendationEngine:
         ]
         profile_parts = [part for part in profile_parts if part.strip()]
         if not profile_parts or len(self.jobs) == 0:
-            return []
+            return None
 
         if self.verbose:
             print("\nLONGUEUR DES PARTIES DU PROFIL :")
@@ -136,12 +159,18 @@ class RecommendationEngine:
 
         # Encoder chaque partie séparément, puis faire la moyenne
         embeddings = np.asarray(
-            self.model.encode(profile_parts, normalize_embeddings=True), dtype=np.float32)
+            self.model.encode([self.query_prefix + part for part in profile_parts],
+                              normalize_embeddings=True), dtype=np.float32)
         student_embedding = embeddings.mean(axis=0)
         student_embedding /= np.linalg.norm(student_embedding)
 
         # Vecteurs normalisés : la similarité cosinus est un simple produit scalaire
-        scores = self.job_embeddings @ student_embedding
+        return self.job_embeddings @ student_embedding
+
+    def recommend(self, student_profile: dict, job_type: str | None = None, top_k: int = 10):
+        scores = self.profile_scores(student_profile)
+        if scores is None:
+            return []
 
         if job_type:
             mask = np.array([j.get("type") == job_type for j in self.jobs])

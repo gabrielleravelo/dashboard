@@ -1,0 +1,125 @@
+{
+  "_description": "Jeu d'évaluation : profils FICTIFS (aucune donnée réelle) au format structuré Tail'ed. Pour chaque profil, 'pertinent_si' et 'sauf_si' sont des expressions régulières appliquées au TITRE de l'offre : elles servent d'étiquettes automatiques approximatives. Pour une évaluation rigoureuse, utiliser plutôt l'annotation manuelle (--export-csv puis --labels).",
+  "profils": [
+    {
+      "id": "logiciel",
+      "domaine": "Développement logiciel",
+      "profil": {
+        "education": [{"program": "Baccalauréat en génie logiciel", "school": "École de technologie supérieure"}],
+        "skillsStructured": [{"name": "Python"}, {"name": "Java"}, {"name": "JavaScript"}, {"name": "React"}, {"name": "Git"}, {"name": "API REST"}]
+      },
+      "pertinent_si": "software|d[ée]veloppeu|developer|programm|full[- ]?stack|back[- ]?end|front[- ]?end|\\bweb\\b|devops|mobile|logiciel",
+      "sauf_si": ""
+    },
+    {
+      "id": "donnees_ia",
+      "domaine": "Science des données et IA",
+      "profil": {
+        "education": [{"program": "AEC en intelligence artificielle", "school": "Collège de Montréal"}],
+        "skillsStructured": [{"name": "Python"}, {"name": "Pandas"}, {"name": "Scikit-learn"}, {"name": "TensorFlow"}, {"name": "SQL"}, {"name": "Apprentissage automatique"}]
+      },
+      "pertinent_si": "\\bdata\\b|donn[ée]es|machine learning|\\bml\\b|\\bai\\b|\\bia\\b|intelligence artificielle|artificial intelligence|deep learning|\\bnlp\\b|computer vision|analytics",
+      "sauf_si": ""
+    },
+    {
+      "id": "electrique",
+      "domaine": "Génie électrique",
+      "profil": {
+        "education": [{"program": "Baccalauréat en génie électrique", "school": "Polytechnique Montréal"}],
+        "skillsStructured": [{"name": "MATLAB"}, {"name": "Simulink"}, {"name": "AutoCAD Electrical"}, {"name": "Automates programmables (PLC)"}, {"name": "Conception de circuits"}, {"name": "Arduino"}]
+      },
+      "pertinent_si": "electrical|[ée]lectrique|electronic|[ée]lectronique|\\bpower\\b|hardware|embedded|\\bplc\\b|control systems|automation|automatisation",
+      "sauf_si": "power bi|financ|audit"
+    },
+    {
+      "id": "mecanique",
+      "domaine": "Génie mécanique",
+      "profil": {
+        "education": [{"program": "Baccalauréat en génie mécanique", "school": "Université de Sherbrooke"}],
+        "skillsStructured": [{"name": "SolidWorks"}, {"name": "AutoCAD"}, {"name": "Thermodynamique"}, {"name": "Fabrication"}, {"name": "Analyse par éléments finis"}]
+      },
+      "pertinent_si": "mechanical|m[ée]canique|manufactur|thermal|mechatron|m[ée]catron|aerospace|a[ée]rospatial|\\bcad\\b",
+      "sauf_si": ""
+    },
+    {
+      "id": "civil",
+      "domaine": "Génie civil",
+      "profil": {
+        "education": [{"program": "Baccalauréat en génie civil", "school": "Université Laval"}],
+        "skillsStructured": [{"name": "AutoCAD Civil 3D"}, {"name": "Calcul des structures"}, {"name": "Géotechnique"}, {"name": "Gestion de chantier"}, {"name": "Revit"}]
+      },
+      "pertinent_si": "\\bcivil\\b|structural|structures|construction|g[ée]otech|transportation|hydraul|water resources|environmental engineer|chantier",
+      "sauf_si": ""
+    },
+    {
+      "id": "finance",
+      "domaine": "Finance et comptabilité",
+      "profil": {
+        "education": [{"program": "Baccalauréat en administration des affaires, concentration finance", "school": "HEC Montréal"}],
+        "skillsStructured": [{"name": "Excel"}, {"name": "Comptabilité"}, {"name": "Analyse financière"}, {"name": "Modélisation financière"}, {"name": "Fiscalité"}]
+      },
+      "pertinent_si": "financ|accounting|accountant|comptab|audit|\\btax\\b|fiscal|actuar|investment|banking|treasury|tr[ée]sorerie|\\brisk\\b|risque",
+      "sauf_si": ""
+    },
+    {
+      "id": "marketing",
+      "domaine": "Marketing et communication",
+      "profil": {
+        "education": [{"program": "Baccalauréat en marketing", "school": "Université du Québec à Montréal"}],
+        "skillsStructured": [{"name": "Marketing numérique"}, {"name": "Médias sociaux"}, {"name": "Création de contenu"}, {"name": "Google Analytics"}, {"name": "Communication"}]
+      },
+      "pertinent_si": "marketing|communications?\\b|\\bbrand|marque|social media|m[ée]dias sociaux|content|contenu|growth|relations publiques|public relations",
+      "sauf_si": ""
+    },
+    {
+      "id": "sante",
+      "domaine": "Santé et soins infirmiers",
+      "profil": {
+        "education": [{"program": "DEC en soins infirmiers", "school": "Cégep du Vieux Montréal"}],
+        "skillsStructured": [{"name": "Soins aux patients"}, {"name": "Administration de médicaments"}, {"name": "Évaluation clinique"}, {"name": "Prévention des infections"}]
+      },
+      "pertinent_si": "nurs|infirmi|clinical|clinique|patient|pharmac|medical|m[ée]dical|health ?care|soins",
+      "sauf_si": "health & safety|health and safety|sant[ée] et s[ée]curit[ée]"
+    },
+    {
+      "id": "ux",
+      "domaine": "Design UX/UI et graphisme",
+      "profil": {
+        "education": [{"program": "Baccalauréat en design graphique", "school": "Université du Québec à Montréal"}],
+        "skillsStructured": [{"name": "Figma"}, {"name": "Adobe Illustrator"}, {"name": "Photoshop"}, {"name": "Prototypage"}, {"name": "Recherche utilisateur"}]
+      },
+      "pertinent_si": "\\bux\\b|\\bui\\b|user experience|exp[ée]rience utilisateur|product design|graphi(c|que)|graphiste|visual design|interaction design|motion design|web design|design system",
+      "sauf_si": "graphics hardware|gpu"
+    },
+    {
+      "id": "cyber",
+      "domaine": "Cybersécurité",
+      "profil": {
+        "education": [{"program": "AEC en cybersécurité", "school": "Collège de Rosemont"}],
+        "skillsStructured": [{"name": "Sécurité des réseaux"}, {"name": "Linux"}, {"name": "Tests d'intrusion"}, {"name": "SIEM"}, {"name": "Gestion des vulnérabilités"}]
+      },
+      "pertinent_si": "cyber|information security|security analyst|security engineer|s[ée]curit[ée] (informatique|de l'information)|\\bsoc\\b|threat|vulnerab|pentest|penetration|\\biam\\b",
+      "sauf_si": ""
+    },
+    {
+      "id": "logistique",
+      "domaine": "Chaîne d'approvisionnement et logistique",
+      "profil": {
+        "education": [{"program": "Baccalauréat en gestion des opérations et de la logistique", "school": "HEC Montréal"}],
+        "skillsStructured": [{"name": "Gestion des stocks"}, {"name": "SAP"}, {"name": "Planification de la demande"}, {"name": "Approvisionnement"}, {"name": "Excel"}]
+      },
+      "pertinent_si": "supply chain|approvisionnement|logisti|procurement|purchasing|\\bachat|inventory|inventaire|warehouse|entrep[ôo]t|demand planning",
+      "sauf_si": ""
+    },
+    {
+      "id": "rh",
+      "domaine": "Ressources humaines",
+      "profil": {
+        "education": [{"program": "Baccalauréat en gestion des ressources humaines", "school": "Université de Montréal"}],
+        "skillsStructured": [{"name": "Recrutement"}, {"name": "Relations de travail"}, {"name": "Paie"}, {"name": "Gestion des talents"}, {"name": "Communication"}]
+      },
+      "pertinent_si": "human resources|ressources humaines|\\bhr\\b|\\brh\\b|talent|recruit|recrut|payroll|\\bpaie\\b",
+      "sauf_si": ""
+    }
+  ]
+}

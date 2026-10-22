@@ -37,6 +37,9 @@ Offres recommandées
 | `jobs_source.py` | Charge les offres : les ~28 000 vraies offres (`jobs.json`, cache 24 h) ou les 100 offres de test ; filtres par type et Canada |
 | `recommendation_engine.py` | Moteur : similarité sémantique (SentenceTransformer) entre le profil et le titre des offres, avec cache des vecteurs |
 | `test_recommendation_engine.py` | Tests du moteur et du chargement des offres (faux modèle, rapides et hors ligne) |
+| `evaluate_recommendations.py` | Évaluation : précision@10 et MRR de plusieurs méthodes sur des profils fictifs |
+| `eval/profils_evaluation.json` | Jeu d'évaluation : 12 profils fictifs de domaines variés + règles de pertinence |
+| `test_evaluate_recommendations.py` | Tests du script d'évaluation |
 | `api.py` | API FastAPI qui expose les recommandations |
 | `test_profil_genie_electrique.py` | Démo avec un profil fictif hors informatique |
 | `data/sample_jobs_100.json` | 100 offres extraites de `jobs.json`, pour les tests hors ligne |
@@ -93,6 +96,31 @@ Le premier lancement sur les vraies offres calcule environ 28 000 vecteurs
 (quelques minutes). Ils sont ensuite gardés dans `data/cache/` et seules les
 nouvelles offres sont recalculées.
 
+## Évaluer les recommandations
+
+Le jeu d'évaluation contient 12 profils **fictifs** de domaines variés
+(logiciel, données/IA, génie électrique, mécanique et civil, finance,
+marketing, santé, design UX, cybersécurité, logistique, ressources humaines).
+Aucun modèle n'est entraîné (modèle préentraîné, sans données étiquetées) :
+ce jeu sert uniquement à **mesurer** et **comparer** les méthodes.
+
+```bash
+python evaluate_recommendations.py                          # étiquettes automatiques, offres au Canada
+python evaluate_recommendations.py --methods tfidf,minilm,e5
+```
+
+Métriques : **Précision@10** (proportion d'offres pertinentes parmi les 10
+premières) et **MRR** (1 / rang de la première offre pertinente).
+
+Les étiquettes automatiques (mots-clés dans le titre) sont approximatives et
+avantagent un peu TF-IDF. Pour une mesure rigoureuse, annoter à la main :
+
+```bash
+python evaluate_recommendations.py --methods tfidf,minilm --export-csv eval/a_annoter.csv
+# remplir la colonne « pertinent » (1/0) dans Excel, à l'aveugle (l'ordre est mélangé)
+python evaluate_recommendations.py --methods random,tfidf,minilm --labels eval/a_annoter.csv
+```
+
 ## Résultats actuels
 
 Sur 20 CV de la base de dev :
@@ -145,6 +173,8 @@ naïf sur le mot « Canada ».
 ## Prochaines étapes
 
 - [x] Charger les vraies offres depuis `jobs.json` (avec cache des vecteurs)
+- [x] Jeu d'évaluation et comparaison de méthodes (aléatoire, TF-IDF, MiniLM, E5)
+- [ ] Annoter manuellement les recommandations pour une mesure rigoureuse
 - [ ] Combiner les sources du profil : saisie manuelle, CV, puis champs simples (`program`, `skills`)
 - [ ] Utiliser les expériences et les projets dans le matching
 - [ ] Enrichir les profils avec les dépôts GitHub publics (`githubUsername`)
