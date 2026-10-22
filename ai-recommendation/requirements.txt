@@ -1,0 +1,8 @@
+pymupdf
+firebase-admin
+sentence-transformers
+scikit-learn
+numpy
+fastapi
+uvicorn
+pytest

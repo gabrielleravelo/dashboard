@@ -45,3 +45,12 @@ functions/firebase-debug.log
 
 # Internal strategy/spec docs - kept local only, not for the public repo
 /docs/
+# Donnees personnelles et secrets (ai-recommendation)
+cv_tests_prives/
+profils_firestore/
+profils_structures/
+*-key.json
+student_profile.json
+.venv/
+__pycache__/
+.pytest_cache/
