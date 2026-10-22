@@ -34,7 +34,9 @@ Offres recommandées
 | `fetch_cvs.py` | Récupère les CV (Storage) et les profils (Firestore) de la base de dev |
 | `evaluate_parser.py` | Compare les données extraites aux données saisies par les étudiants |
 | `profile_adapter.py` | Transforme un profil structuré en entrée pour le moteur |
-| `recommendation_engine.py` | Moteur : similarité sémantique (SentenceTransformer) entre le profil et le titre des offres |
+| `jobs_source.py` | Charge les offres : les ~28 000 vraies offres (`jobs.json`, cache 24 h) ou les 100 offres de test ; filtres par type et Canada |
+| `recommendation_engine.py` | Moteur : similarité sémantique (SentenceTransformer) entre le profil et le titre des offres, avec cache des vecteurs |
+| `test_recommendation_engine.py` | Tests du moteur et du chargement des offres (faux modèle, rapides et hors ligne) |
 | `api.py` | API FastAPI qui expose les recommandations |
 | `test_profil_genie_electrique.py` | Démo avec un profil fictif hors informatique |
 | `data/sample_jobs_100.json` | 100 offres extraites de `jobs.json`, pour les tests hors ligne |
@@ -47,7 +49,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1        # Windows (PowerShell)
 # source .venv/bin/activate       # macOS / Linux
 pip install -r requirements.txt
-python -m pytest test_cv_to_structured.py -v
+python -m pytest -v
 ```
 
 ## Utilisation
@@ -80,9 +82,16 @@ Chaque CV reçoit un statut :
 **3. Tester les recommandations**
 
 ```bash
-python test_profil_genie_electrique.py
-uvicorn api:app --reload
+python jobs_source.py                                  # télécharge et résume les vraies offres
+python test_profil_genie_electrique.py                 # 100 offres de test
+python test_profil_genie_electrique.py --live --canada # vraies offres au Canada
+uvicorn api:app --reload                               # API sur les offres de test
+$env:JOBS_SOURCE = "live"; uvicorn api:app             # API sur les vraies offres (PowerShell)
 ```
+
+Le premier lancement sur les vraies offres calcule environ 28 000 vecteurs
+(quelques minutes). Ils sont ensuite gardés dans `data/cache/` et seules les
+nouvelles offres sont recalculées.
 
 ## Résultats actuels
 
@@ -115,6 +124,13 @@ Champs disponibles : `id`, `company`, `title`, `location`, `type`
 `date_added`, `active`. Il n'y a **pas de description**, d'où un matching basé
 sur le titre.
 
+**Attention à la localisation :** le script du dépôt des offres
+(`scripts/core/normalize.py`) convertit l'abréviation « CA » en « Canada ».
+Des offres en Californie apparaissent donc comme « San Diego, Canada ».
+`jobs_source.is_canada()` exige une province, une ville canadienne connue ou un
+format sans ambiguïté : il garde ~1 150 offres au lieu de ~1 650 avec un filtre
+naïf sur le mot « Canada ».
+
 ## Limites connues
 
 - CV scannés (images) : pas de texte, donc statut `echec` (il faudrait de l'OCR).
@@ -128,7 +144,8 @@ sur le titre.
 
 ## Prochaines étapes
 
-- [ ] Charger les vraies offres depuis `jobs.json` (avec cache des vecteurs)
+- [x] Charger les vraies offres depuis `jobs.json` (avec cache des vecteurs)
+- [ ] Combiner les sources du profil : saisie manuelle, CV, puis champs simples (`program`, `skills`)
 - [ ] Utiliser les expériences et les projets dans le matching
 - [ ] Enrichir les profils avec les dépôts GitHub publics (`githubUsername`)
 - [ ] Proposer les améliorations du parseur dans `resume-parser.ts`
@@ -144,6 +161,7 @@ profils_firestore/
 profils_structures/
 *-key.json
 student_profile.json
+data/cache/
 ```
 
 Ne garde jamais une clé de compte de service dans le dossier du dépôt.

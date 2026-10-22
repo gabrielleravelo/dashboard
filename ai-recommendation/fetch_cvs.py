@@ -172,8 +172,9 @@ def main():
     args = ap.parse_args()
 
     cv_dir, struct_dir = Path(args.cv_dir), Path(args.struct_dir)
-    cv_dir.mkdir(parents=True, exist_ok=True)
     struct_dir.mkdir(parents=True, exist_ok=True)
+    if not args.profiles_only:  # pas de dossier de CV vide en mode profils
+        cv_dir.mkdir(parents=True, exist_ok=True)
 
     init_firebase(args.key)
     print(f"Connexion au projet {PROJECT_ID}...")
@@ -185,7 +186,10 @@ def main():
         stats = fetch_from_firestore(cv_dir, struct_dir, args.limit)
 
     print("\nRésumé :", json.dumps(stats, ensure_ascii=False))
-    print(f"CV dans : {cv_dir.resolve()}")
+    if args.profiles_only:
+        print(f"Profils dans : {struct_dir.resolve()}")
+    else:
+        print(f"CV dans : {cv_dir.resolve()}")
     print("Rappel : ces fichiers sont des données personnelles, ne pas les committer.")
 
 

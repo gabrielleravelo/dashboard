@@ -54,3 +54,4 @@ student_profile.json
 .venv/
 __pycache__/
 .pytest_cache/
+ai-recommendation/data/cache/
