@@ -83,7 +83,12 @@ def fetch_jobs_file(refresh: bool = False, max_age_hours: float = MAX_AGE_HOURS)
 # « San Diego, Canada » est donc une offre en Californie. On ne se fie pas au
 # mot « Canada » seul : il faut une province, une ville canadienne connue ou
 # un format sans ambiguïté.
-_PROVINCES = r"QC|ON|BC|AB|MB|NS|NB|SK|NL|PE|YT|NT|NU"
+# Abréviations sans ambiguïté. NB, NL, SK et PE sont aussi utilisées ailleurs
+# (« Eindhoven, NB » = Brabant-Septentrional aux Pays-Bas, NL = Pays-Bas,
+# SK = Slovaquie, PE = Pérou) : pour celles-là, il faut « , Canada » après,
+# ou une ville canadienne connue.
+_PROVINCES = r"QC|ON|BC|AB|MB|NS|YT|NT|NU"
+_ALL_PROVINCES = r"QC|ON|BC|AB|MB|NS|NB|SK|NL|PE|YT|NT|NU"
 _CITIES = (
     r"montr[ée]al|toronto|vancouver|ottawa|calgary|edmonton|waterloo|mississauga|"
     r"burnaby|qu[ée]bec|laval|winnipeg|halifax|victoria|kitchener|markham|gatineau|"
@@ -92,8 +97,9 @@ _CITIES = (
     r"fredericton|moncton|st\.? john'?s|charlottetown|surrey|kelowna|windsor"
 )
 CANADA_RE = re.compile(
-    rf"(?:,\s*(?:{_PROVINCES})\b)"           # « Toronto, ON »
-    rf"|(?:^\s*(?:{_PROVINCES}),\s*Canada)"  # « QC, Canada »
+    rf"(?:,\s*(?:{_PROVINCES})\b)"                 # « Toronto, ON »
+    rf"|(?:,\s*(?:{_ALL_PROVINCES}),\s*Canada)"   # « Moncton, NB, Canada »
+    rf"|(?:^\s*(?:{_ALL_PROVINCES}),\s*Canada)"   # « QC, Canada »
     rf"|\b(?:{_CITIES})\b"                    # ville canadienne connue
     rf"|^Ca\.(?:qc|on|bc|ab|mb|ns|nb|sk|nl|pe)\."  # « Ca.qc.montréal... »
     rf"|^\s*Canada\s*(?:$|[-(/]|\s{{2}})"     # « Canada », « Canada  Ontario »

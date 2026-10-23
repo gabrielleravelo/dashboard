@@ -29,6 +29,7 @@ Offres recommandées
 
 | Fichier | Rôle |
 |---|---|
+| `recommander_depuis_cv.py` | **Pipeline complet** : CV (PDF) → données structurées → offres recommandées |
 | `cv_to_structured.py` | CV PDF → données structurées. Portage Python de `functions/src/lib/resume-parser.ts`, même schéma de sortie |
 | `test_cv_to_structured.py` | Tests unitaires du parseur : les 12 tests officiels de `resume-parser.test.ts` + cas trouvés sur de vrais CV |
 | `fetch_cvs.py` | Récupère les CV (Storage) et les profils (Firestore) de la base de dev |
@@ -55,7 +56,18 @@ pip install -r requirements.txt
 python -m pytest -v
 ```
 
-## Utilisation
+## Démarrage rapide : CV → recommandations
+
+```bash
+python recommander_depuis_cv.py mon_cv.pdf --live --canada
+python recommander_depuis_cv.py mon_cv.pdf --live --type internship --top 20
+python recommander_depuis_cv.py profil.json --live      # profil déjà structuré
+```
+
+Si le CV n'est pas assez standard pour être structuré (statut différent de
+`ok`), aucune recommandation n'est faite, conformément à la règle du projet.
+
+## Utilisation détaillée
 
 **1. Récupérer les CV de la base de dev** (nécessite un accès au projet `tailed-community-dev`)
 
@@ -123,22 +135,48 @@ python evaluate_recommendations.py --methods random,tfidf,minilm --labels eval/a
 
 ## Résultats actuels
 
-Sur 20 CV de la base de dev :
+### Extraction des CV
+
+Sur 20 CV de la base de développement :
 
 | Version | CV exploitables |
 |---|---|
 | Première version du portage | 2 / 20 |
 | Après ajustements sur les vrais CV | **19 / 20** |
 
-Principaux ajustements (repérés par `AJOUT` dans le code) :
-- section « Summary of Skills and Qualifications » (modèle très fréquent) ;
-- section de bénévolat → expériences avec `employmentType: "volunteer"` ;
-- sections ignorées (activités parascolaires, prix, associations) ;
-- titres au pluriel, titres espacés, mois accentués ;
-- compétences écrites en phrases ;
-- lignes « Technical skills: … » dans une expérience ou un projet ;
-- titres de projets et descriptions bien séparés ;
-- formation sur une seule ligne « Programme — École | années ».
+Principaux ajustements (repérés par `AJOUT` dans le code) : section « Summary of
+Skills and Qualifications » (modèle très fréquent), bénévolat, sections
+ignorées (activités parascolaires, prix), titres au pluriel ou espacés, mois
+accentués, compétences écrites en phrases, séparation titre/description des
+projets, formation sur une seule ligne.
+
+Attention : le parseur a été ajusté sur ces mêmes 20 CV, ce score est donc
+probablement optimiste. La base en contient 173 : en garder une partie de côté
+(jamais utilisée pour ajuster) donnerait une mesure plus fiable.
+
+### Recommandations
+
+Évaluation sur 1 186 offres au Canada, 12 profils fictifs, étiquettes
+automatiques (mots-clés), k = 10 :
+
+| Méthode | Précision@10 | MRR |
+|---|---|---|
+| Aléatoire | 0,04 | 0,21 |
+| TF-IDF (mots-clés) | 0,31 | 0,52 |
+| **MiniLM multilingue (moteur actuel)** | **0,62** | **1,00** |
+
+- Le moteur est deux fois plus précis que TF-IDF ; l'écart est le plus grand
+  quand les mots diffèrent (profil en français, offres en anglais) : logiciel
+  1,00 contre 0,30, données/IA 0,90 contre 0,20, génie électrique 0,90 contre 0,30.
+- MRR = 1,00 : pour les 12 profils, la première offre recommandée est pertinente.
+- Points faibles : design UX (0,10), logistique (0,10), santé (0,30), RH (0,40).
+  Causes observées : titres ambigus (« CAD Design » pour un profil UX), niveau
+  du poste non pris en compte (« Physician » pour une étudiante en soins
+  infirmiers), peu d'offres disponibles au Canada dans ces domaines, et règles
+  de mots-clés parfois trop strictes.
+
+Ces chiffres donnent une tendance ; une annotation manuelle donnera une mesure
+plus rigoureuse (voir « Évaluer les recommandations »).
 
 ## Source des offres
 
@@ -175,7 +213,12 @@ naïf sur le mot « Canada ».
 - [x] Charger les vraies offres depuis `jobs.json` (avec cache des vecteurs)
 - [x] Jeu d'évaluation et comparaison de méthodes (aléatoire, TF-IDF, MiniLM, E5)
 - [ ] Annoter manuellement les recommandations pour une mesure rigoureuse
-- [ ] Combiner les sources du profil : saisie manuelle, CV, puis champs simples (`program`, `skills`)
+- [ ] Combiner les sources du profil : saisie manuelle, CV, puis champs simples
+      (`program` et `school` remplis à 91 %, `skills` à 71 % ; champs structurés à 1 %)
+- [ ] Filtre de lieu choisi par chaque étudiant (Canada, Québec, télétravail, monde)
+- [ ] Utiliser les postes recherchés par l'étudiant (`postes_recherches`, vide aujourd'hui)
+- [ ] Récupérer les descriptions des offres (absentes de `jobs.json`)
+- [ ] Comparer avec un modèle plus récent (`--methods tfidf,minilm,e5`)
 - [ ] Utiliser les expériences et les projets dans le matching
 - [ ] Enrichir les profils avec les dépôts GitHub publics (`githubUsername`)
 - [ ] Proposer les améliorations du parseur dans `resume-parser.ts`

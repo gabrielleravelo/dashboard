@@ -55,6 +55,9 @@ def test_load_jobs_filters_inactive_and_duplicates(jobs_file):
 
 def test_canada_filter_ignores_california(jobs_file):
     assert not is_canada("San Diego, Canada")      # « CA » = Californie
+    assert not is_canada("Eindhoven, NB")          # Pays-Bas, pas Nouveau-Brunswick
+    assert not is_canada("Amsterdam, NL")
+    assert is_canada("Moncton, NB") and is_canada("Saint John, NB, Canada")
     assert is_canada("Montréal, QC") and is_canada("Toronto, ON, Canada")
     jobs = load_jobs(str(jobs_file), canada_only=True)
     assert [j["id"] for j in jobs] == ["1", "3"]

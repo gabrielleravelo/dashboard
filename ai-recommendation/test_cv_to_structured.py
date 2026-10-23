@@ -342,3 +342,15 @@ Hackathon Club Member
     assert exps[1]["employmentType"] == "volunteer"
     assert "JANE DOE" not in meta["unknown"]   # jamais le nom de l'étudiant
     assert meta["warnings"] == []
+
+
+def test_typographic_apostrophe_in_present():
+    ed = parse_resume_text("""
+FORMATION
+Baccalauréat en génie informatique
+Polytechnique Montréal                     Sept. 2022 – Aujourd’hui
+""")["education"]
+    assert len(ed) == 1
+    assert ed[0]["school"] == "Polytechnique Montréal"
+    assert ed[0].get("current") is True
+    assert ed[0]["startYear"] == "2022" and "graduationYear" not in ed[0]

@@ -131,7 +131,7 @@ DATE_TOKEN = (
 )
 PRESENT = (
     r"(?:present|current|ongoing|now|today|pr[ée]sent[e]?|actuel(?:le)?"
-    r"|aujourd'?hui|en\s+cours)"
+    r"|aujourd['’]?hui|en\s+cours)"  # AJOUT : apostrophe typographique ’ (Word)
 )
 RANGE_RE = re.compile(
     rf"({DATE_TOKEN})\s*(?:[-–—]|to|until|through|thru|jusqu'?[àa]|jusqu'?en|[àa]|au)"
@@ -794,12 +794,18 @@ def parse_education(lines):
                "source": "resume-parse"}
         if field:
             obj["fieldOfStudy"] = field
+        # AJOUT : formation en cours (« Sept. 2022 – Aujourd’hui », « présent »…)
+        current = bool(PRESENT_RE.search(" ".join(block)))
+        if current:
+            obj["current"] = True
         if years:
-            obj["graduationYear"] = str(max(years))
-            if len(set(years)) >= 2:
-                obj["startYear"] = str(min(years))  # AJOUT (champ prévu par Education)
-        if re.search(r"\b(en cours|present|présent|current|ongoing)\b", " ".join(block), re.I):
-            obj["current"] = True  # AJOUT
+            if current and len(set(years)) == 1:
+                # Une seule année + « en cours » : c'est l'année de début, pas de fin
+                obj["startYear"] = str(years[0])
+            else:
+                obj["graduationYear"] = str(max(years))
+                if len(set(years)) >= 2:
+                    obj["startYear"] = str(min(years))  # AJOUT (champ prévu par Education)
         out.append(obj)
     return out
 
