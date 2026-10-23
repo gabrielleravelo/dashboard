@@ -69,24 +69,29 @@ Si le CV n'est pas assez standard pour être structuré (statut différent de
 
 ## Utilisation détaillée
 
-**1. Récupérer les CV de la base de dev** (nécessite un accès au projet `tailed-community-dev`)
+**1. Récupérer et structurer les CV de la base de dev** (nécessite un accès au projet `tailed-community-dev`)
+
+Les CV sont lus **en mémoire** et passés directement au parseur : aucun PDF
+n'est enregistré. Seul le JSON structuré (sans nom ni coordonnées) est gardé.
 
 ```bash
 # Avec une clé de compte de service (gardée HORS du dépôt)
-python fetch_cvs.py --key C:\chemin\hors\depot\tailed-dev-key.json --limit 20
-# Ou avec Google Cloud CLI
-gcloud auth application-default login
-python fetch_cvs.py --limit 20
+python fetch_cvs.py --key C:\chemin\hors\depot\tailed-dev-key.json --limit 20 --parse-direct --struct-dir ../../tail-ed-ai-data/profils_structures
+
+# Ne rien enregistrer du tout : statistiques du parseur seulement
+python fetch_cvs.py --key ... --limit 20 --parse-direct --no-save
 
 # Profils Firestore seulement (sans CV, sans nom ni courriel)
 python fetch_cvs.py --key ... --profiles-only
 ```
 
-**2. Transformer les CV en données structurées**
+Sans `--key`, le script utilise Google Cloud CLI
+(`gcloud auth application-default login`).
+
+**2. Structurer un CV local** (par exemple son propre CV, ou pour diagnostiquer un cas)
 
 ```bash
-python cv_to_structured.py ../cv_tests_prives            # un dossier
-python cv_to_structured.py mon_cv.pdf --debug             # un CV, avec diagnostic
+python cv_to_structured.py mon_cv.pdf --debug
 ```
 
 Chaque CV reçoit un statut :
@@ -204,26 +209,16 @@ naïf sur le mot « Canada ».
 - CV hors informatique : la structure est bien extraite, mais les compétences
   écrites en phrases et certains diplômes québécois (DEP, AEC) sont moins
   bien reconnus.
-- Les offres n'ont pas de description : le matching ne peut utiliser que le titre.
+- Les offres n'ont pas de description dans `jobs.json` : le matching ne peut
+  utiliser que le titre.
 - Le moteur utilise pour l'instant la formation et les compétences, pas encore
   les expériences ni les projets.
 
-## Prochaines étapes
-
-- [x] Charger les vraies offres depuis `jobs.json` (avec cache des vecteurs)
-- [x] Jeu d'évaluation et comparaison de méthodes (aléatoire, TF-IDF, MiniLM, E5)
-- [ ] Annoter manuellement les recommandations pour une mesure rigoureuse
-- [ ] Combiner les sources du profil : saisie manuelle, CV, puis champs simples
-      (`program` et `school` remplis à 91 %, `skills` à 71 % ; champs structurés à 1 %)
-- [ ] Filtre de lieu choisi par chaque étudiant (Canada, Québec, télétravail, monde)
-- [ ] Utiliser les postes recherchés par l'étudiant (`postes_recherches`, vide aujourd'hui)
-- [ ] Récupérer les descriptions des offres (absentes de `jobs.json`)
-- [ ] Comparer avec un modèle plus récent (`--methods tfidf,minilm,e5`)
-- [ ] Utiliser les expériences et les projets dans le matching
-- [ ] Enrichir les profils avec les dépôts GitHub publics (`githubUsername`)
-- [ ] Proposer les améliorations du parseur dans `resume-parser.ts`
-
 ## Sécurité et données personnelles
+
+Avec `--parse-direct`, les CV sont lus en mémoire et ne sont jamais écrits sur
+le disque. Si des PDF ou des profils sont enregistrés, ils doivent rester hors
+du dépôt et être supprimés à la fin des tests.
 
 Les CV, les profils et la clé de compte de service ne doivent **jamais** être
 commités. Le `.gitignore` du dépôt bloque :
