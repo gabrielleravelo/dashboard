@@ -23,6 +23,9 @@ Authentification (UNE des deux) :
 Options :
     --limit 20            ne récupérer que 20 profils
     --storage-only        lister directement le bucket (sans lire Firestore)
+    --parse-direct        lire les CV EN MÉMOIRE et ne garder que le JSON structuré
+                          (aucun PDF écrit sur le disque)
+    --parse-direct --no-save   ne rien enregistrer du tout : statistiques seulement
     --profiles-only       lire TOUS les profils Firestore sans télécharger de CV
                           (champs utiles au matching seulement, sans nom/courriel)
 
@@ -90,6 +93,56 @@ def fetch_from_firestore(cv_dir, struct_dir, limit):
         blob.download_to_filename(cv_dir / f"{uid}.pdf")
         stats["cv"] += 1
         print(f"  CV téléchargé : {uid}.pdf")
+    return stats
+
+
+def parse_in_memory(struct_dir, limit, save=True):
+    """Télécharger chaque CV EN MÉMOIRE, le passer au parseur, puis l'oublier.
+    Aucun PDF n'est écrit sur le disque. Avec save=True, seul le JSON structuré
+    (sans nom ni coordonnées) est gardé ; avec save=False, rien n'est gardé :
+    on affiche seulement les statistiques du parseur."""
+    from cv_to_structured import parse_resume_pdf
+
+    db = firestore.client()
+    bucket = storage.bucket()
+    stats = {"profils": 0, "cv": 0, "sans_cv": 0, "cv_introuvable": 0,
+             "ok": 0, "partiel": 0, "echec": 0}
+
+    for doc in db.collection("profiles").stream():
+        if limit and stats["cv"] >= limit:
+            break
+        stats["profils"] += 1
+        uid = doc.id
+        resume = (doc.to_dict() or {}).get("resume") or {}
+        if not resume.get("id"):
+            stats["sans_cv"] += 1
+            continue
+        blob = bucket.blob(f"profiles/{uid}/resumes/main_resume/{resume['id']}.pdf")
+        if not blob.exists():
+            stats["cv_introuvable"] += 1
+            continue
+
+        pdf_bytes = blob.download_as_bytes()          # en mémoire seulement
+        try:
+            profile = parse_resume_pdf(pdf_bytes, name=f"{uid}.pdf")
+        except Exception as exc:                      # PDF corrompu, etc.
+            profile = {"_meta": {"status": "echec", "reason": str(exc), "counts": {}}}
+        finally:
+            del pdf_bytes                             # le CV n'est plus gardé nulle part
+
+        stats["cv"] += 1
+        meta = profile["_meta"]
+        stats[meta["status"]] = stats.get(meta["status"], 0) + 1
+        c = meta.get("counts", {})
+        print(f"  [{meta['status'].upper():7}] {uid[:8]}…  exp={c.get('experiences', 0)} "
+              f"form={c.get('education', 0)} proj={c.get('projects', 0)} "
+              f"comp={c.get('skillsStructured', 0)}")
+        if save:
+            (struct_dir / f"{uid}.json").write_text(
+                json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    if stats["cv"]:
+        print(f"\n{stats['ok']}/{stats['cv']} CV exploitables pour les recommandations.")
     return stats
 
 
@@ -167,18 +220,26 @@ def main():
     ap.add_argument("--storage-only", action="store_true")
     ap.add_argument("--profiles-only", action="store_true",
                     help="Lire seulement les profils Firestore, sans télécharger de CV")
+    ap.add_argument("--parse-direct", action="store_true",
+                    help="Lire les CV en mémoire sans les enregistrer ; garder seulement le JSON structuré")
+    ap.add_argument("--no-save", action="store_true",
+                    help="Avec --parse-direct : ne rien enregistrer, afficher seulement les statistiques")
     ap.add_argument("--cv-dir", default="../cv_tests_prives")
     ap.add_argument("--struct-dir", default="../profils_firestore")
     args = ap.parse_args()
 
     cv_dir, struct_dir = Path(args.cv_dir), Path(args.struct_dir)
-    struct_dir.mkdir(parents=True, exist_ok=True)
-    if not args.profiles_only:  # pas de dossier de CV vide en mode profils
+    direct = args.parse_direct
+    if not (direct and args.no_save):
+        struct_dir.mkdir(parents=True, exist_ok=True)
+    if not (args.profiles_only or direct):  # aucun dossier de CV si on ne garde pas les PDF
         cv_dir.mkdir(parents=True, exist_ok=True)
 
     init_firebase(args.key)
     print(f"Connexion au projet {PROJECT_ID}...")
-    if args.profiles_only:
+    if direct:
+        stats = parse_in_memory(struct_dir, args.limit, save=not args.no_save)
+    elif args.profiles_only:
         stats = fetch_profiles_only(struct_dir, args.limit)
     elif args.storage_only:
         stats = fetch_from_storage(cv_dir, args.limit)
@@ -186,11 +247,16 @@ def main():
         stats = fetch_from_firestore(cv_dir, struct_dir, args.limit)
 
     print("\nRésumé :", json.dumps(stats, ensure_ascii=False))
-    if args.profiles_only:
+    if direct and args.no_save:
+        print("Aucun fichier enregistré : les CV ont été lus en mémoire seulement.")
+    elif direct:
+        print(f"Aucun PDF enregistré. Profils structurés dans : {struct_dir.resolve()}")
+    elif args.profiles_only:
         print(f"Profils dans : {struct_dir.resolve()}")
     else:
         print(f"CV dans : {cv_dir.resolve()}")
-    print("Rappel : ces fichiers sont des données personnelles, ne pas les committer.")
+    if not (direct and args.no_save):
+        print("Rappel : ces fichiers sont des données personnelles, ne pas les committer.")
 
 
 if __name__ == "__main__":

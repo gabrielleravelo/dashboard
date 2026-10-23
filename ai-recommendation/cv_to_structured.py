@@ -1129,10 +1129,19 @@ def quality_status(result, text: str):
     return "echec", "Aucune section reconnue (CV non standard)"
 
 
-def parse_resume_pdf(pdf_path) -> dict:
+def parse_resume_pdf(pdf_path, name: str | None = None) -> dict:
+    """pdf_path : chemin d'un PDF, ou directement son contenu (bytes).
+    AJOUT : avec des bytes, le CV est lu en mémoire, sans jamais être écrit sur le disque."""
     import pymupdf  # importé ici pour que parse_resume_text reste testable sans PyMuPDF
 
-    with pymupdf.open(pdf_path) as doc:
+    if isinstance(pdf_path, (bytes, bytearray)):
+        opened = pymupdf.open(stream=bytes(pdf_path), filetype="pdf")
+        name = name or "cv_en_memoire.pdf"
+    else:
+        opened = pymupdf.open(pdf_path)
+        name = name or Path(pdf_path).name
+
+    with opened as doc:
         candidates = []
         for mode, fn in (("standard", extract_text_standard), ("layout", extract_text_layout)):
             text = fn(doc)
@@ -1141,7 +1150,7 @@ def parse_resume_pdf(pdf_path) -> dict:
     score, mode, text, result, meta = max(candidates, key=lambda c: c[0])
     status, reason = quality_status(result, text)
     result["_meta"] = {
-        "file": Path(pdf_path).name,
+        "file": name,
         "status": status,
         "recommendable": status == "ok",
         "reason": reason,
